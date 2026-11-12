@@ -12,6 +12,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "dependencies": {
     "@better-auth/mongo-adapter": "^1.7.20",
     "cors": "^2.8.6",
