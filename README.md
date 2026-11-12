@@ -18,3 +18,21 @@ npm start
 ```
 
 The server listens on port `5000` by default.
+
+## API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/` | Health check |
+| `GET` | `/books` | List every book |
+| `GET` | `/new-arrivals` | List the newest books |
+| `GET` | `/books/:id` | Book details (signed in) |
+| `POST` | `/add-books` | Create a book with an optional cover |
+| `GET` | `/my-books` | Books owned by the caller |
+| `PATCH` | `/books/:id` | Edit a book owned by the caller |
+| `DELETE` | `/books/:id` | Delete a book owned by the caller |
+| `POST` | `/borrows` | Borrow one copy of a book |
+| `GET` | `/borrows` | List the caller's borrows |
+| `POST` | `/borrows/:id/return` | Return one of the caller's borrows |
+| `GET` | `/book-image/:id` | Stream a cover image from GridFS |
+
