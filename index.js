@@ -51,16 +51,37 @@ app.use(
 )
 app.use(express.json())
 
-const client = new MongoClient(process.env.MONGODB_URL);
+// The driver waits 30 seconds for server selection by default. A stalled
+// selection therefore held requests open for half a minute, so the timeouts
+// are shortened and the connection is retried instead.
+const client = new MongoClient(process.env.MONGODB_URL, {
+  serverSelectionTimeoutMS: 8000,
+  connectTimeoutMS: 8000,
+  maxPoolSize: 10,
+  retryReads: true,
+  retryWrites: true,
+});
+
+const MONGO_CONNECT_ATTEMPTS = 3;
 
 export async function connectToMongoDB() {
-  try {
-    await client.connect();
-    console.log("You successfully connected to MongoDB!");
-    return client;
-  } catch (err) {
-    console.error("Could not connect to MongoDB:", err);
-    throw err;
+  for (let attempt = 1; attempt <= MONGO_CONNECT_ATTEMPTS; attempt++) {
+    try {
+      await client.connect();
+      console.log("You successfully connected to MongoDB!");
+      return client;
+    } catch (err) {
+      console.error(
+        `MongoDB connection attempt ${attempt} of ${MONGO_CONNECT_ATTEMPTS} failed:`,
+        err?.message ?? err,
+      );
+
+      if (attempt === MONGO_CONNECT_ATTEMPTS) {
+        throw err;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
   }
 }
 
