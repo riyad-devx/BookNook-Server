@@ -8,15 +8,31 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 const app = express()
 const PORT = Number(process.env.PORT ?? 5000)
 
+// Report missing configuration instead of failing later with a confusing
+// "Cannot read properties of undefined" error.
+const REQUIRED_ENV = ["MONGODB_URL", "BETTER_AUTH_URL"]
+const missingEnv = REQUIRED_ENV.filter((name) => !process.env[name])
+
+if (missingEnv.length > 0) {
+  console.error(
+    `Missing environment variables: ${missingEnv.join(", ")}. ` +
+      "The server will start, but the features that need them will not work.",
+  )
+}
+
 const AUTH_BASE_URL = (
   process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
 ).replace(/\/+$/, "")
 const APP_ORIGIN = (process.env.APP_ORIGIN ?? AUTH_BASE_URL).replace(/\/+$/, "")
+const PUBLIC_API_URL = (
+  process.env.PUBLIC_API_URL ?? `http://localhost:${PORT}`
+).replace(/\/+$/, "")
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    // Vercel serverless functions cap the request body at 4.5 MB.
+    fileSize: 4 * 1024 * 1024,
   },
 });
 
@@ -43,7 +59,8 @@ export async function connectToMongoDB() {
     console.log("You successfully connected to MongoDB!");
     return client;
   } catch (err) {
-    console.dir(err);
+    console.error("Could not connect to MongoDB:", err);
+    throw err;
   }
 }
 
@@ -216,7 +233,7 @@ app.get("/books/:id", requireAuth, async (req, res) => {
       ...bookToJson(book, { includeOwner: true }),
       imageId: book.imageId?.toString(),
       imageUrl: book.imageId
-        ? `http://localhost:${PORT}/book-image/${book.imageId}`
+        ? `${PUBLIC_API_URL}/book-image/${book.imageId}`
         : null,
     });
   } catch (error) {
@@ -600,6 +617,12 @@ try {
   console.error('Could not create borrows index', error)
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running at ${PORT}`)
-})
+// Vercel invokes the exported handler directly; only listen when running
+// as a normal Node process.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server is running at ${PORT}`)
+  })
+}
+
+export default app
